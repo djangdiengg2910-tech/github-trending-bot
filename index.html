@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Wanna call me now, bae?</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:linear-gradient(135deg,#ffd6e8,#ffb6d5);}
+    #container{width:720px;max-width:95%;background:#fff;border-radius:12px;padding:32px;box-shadow:0 8px 30px rgba(17,24,39,0.08);position:relative;overflow:hidden}
+    h1{font-size:24px;margin:0 0 18px;color:#111}
+    .choices{display:flex;gap:16px;align-items:center}
+    button{padding:10px 18px;border-radius:8px;border:2px solid #222;background:#111;color:#fff;font-weight:600;cursor:pointer;transition:transform .12s ease}
+    #yes{background:#0a84ff;border-color:#0a84ff}
+    #no{background:#ff3b30;border-color:#ff3b30}
+    #output{margin-top:20px;min-height:36px;display:flex;gap:12px;align-items:center}
+    a.link{color:#0a84ff;text-decoration:none;font-weight:600}
+    .emoji{font-size:30px;transition:transform .18s ease}
+    .heart{position:fixed;pointer-events:none;opacity:0.95;font-size:20px;animation:floatUp linear infinite}
+    @keyframes floatUp{
+      0%{transform:translateY(0) scale(1);opacity:0}
+      10%{opacity:1}
+      100%{transform:translateY(-120vh) scale(1.4);opacity:0}
+    }
+    .heart-fill{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:999}
+    .heart-fill .heart{position:absolute;animation-name:floatUpSlow}
+    @keyframes floatUpSlow{
+      0%{transform:translateY(20vh) scale(0.6);opacity:0}
+      10%{opacity:1}
+      100%{transform:translateY(-120vh) scale(1.6);opacity:0}
+    }
+    .burst-heart{position:absolute;pointer-events:none;font-size:22px;opacity:0;transform:translate(-50%,-50%) scale(0.8);animation:burst 1200ms ease-out forwards}
+    @keyframes burst{
+      0%{opacity:1;transform:translate(-50%,-50%) scale(0.8)}
+      100%{opacity:0;transform:translate(calc(-50% + var(--dx)), calc(-50% - var(--dy))) scale(1.4)}
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <h1>Wanna call me now, bae?</h1>
+    <div class="choices">
+      <button id="no">biến đi thằng già</button>
+      <button id="yes">dạ</button>
+    </div>
+    <div id="output"></div>
+  </div>
+
+  <script>
+    const container = document.getElementById('container');
+    const noBtn = document.getElementById('no');
+    const yesBtn = document.getElementById('yes');
+    const output = document.getElementById('output');
+
+    let dodgeEnabled = true;
+    let angryClicks = 0;
+
+    function placeRandomly(element){
+      const pad = 8;
+      const cRect = container.getBoundingClientRect();
+      const elRect = element.getBoundingClientRect();
+      const maxX = Math.max(0, cRect.width - elRect.width - pad);
+      const maxY = Math.max(0, cRect.height - elRect.height - pad - 60);
+      const x = Math.random()*maxX + pad;
+      const y = Math.random()*maxY + pad + 40; // leave header space
+      element.style.position = 'absolute';
+      element.style.left = x + 'px';
+      element.style.top = y + 'px';
+    }
+
+    function ensureStaticLayout(){
+      container.style.minHeight = '220px';
+    }
+
+    ensureStaticLayout();
+
+    // Shared handler for actions that behave like "dạ"
+    function handleYesLike(){
+      // change whole page background to a bright pink theme
+      document.body.style.background = 'linear-gradient(135deg,#ffb3d6,#ff6aa8)';
+      // replace the title text
+      const titleEl = document.querySelector('#container h1');
+      if(titleEl) titleEl.textContent = 'watting 4 u';
+      // hide both buttons
+      yesBtn.style.display = 'none';
+      noBtn.style.display = 'none';
+      // update output: show link below
+      output.innerHTML = '';
+      const a = document.createElement('a');
+      a.href = 'https://web.facebook.com/truong.giang.neee';
+      a.target = '_blank';
+      a.className = 'link';
+      a.textContent = 'https://web.facebook.com/truong.giang.neee';
+      const happy = document.createElement('span');
+      happy.className = 'emoji';
+      happy.textContent = '😊';
+      output.appendChild(a);
+      output.appendChild(happy);
+      // flood and emit many hearts from center/background
+      floodHearts(160);
+      emitHeartsBurst(80);
+    }
+
+    yesBtn.addEventListener('click', handleYesLike);
+
+    // Emoji element for the sad/growing face
+    const sad = document.createElement('span');
+    sad.className = 'emoji';
+    sad.style.transformOrigin = 'center center';
+
+    function updateSadEmoji(){
+      if(angryClicks <= 0){
+        if(sad.parentNode) sad.remove();
+        return;
+      }
+
+      if(!sad.parentNode) output.appendChild(sad);
+
+      if(angryClicks > 1){
+        sad.textContent = '💥';
+        sad.style.transform = 'scale(1.6)';
+        noBtn.textContent = 'em yeu anh';
+        dodgeEnabled = false;
+        noBtn.style.position = '';
+        noBtn.style.left = '';
+        noBtn.style.top = '';
+        // when it becomes "em yeu anh", flood the screen with hearts
+        floodHearts(140);
+      } else {
+        sad.textContent = '😢';
+        const scale = 1 + angryClicks*0.25;
+        sad.style.transform = `scale(${scale})`;
+      }
+    }
+
+    // On click of the dodging button: dodge only when clicked (no hover dodge)
+    noBtn.addEventListener('click', (e)=>{
+      e.preventDefault();
+      // if this button has become the love option, behave like yes
+      if(noBtn.textContent && noBtn.textContent.trim().toLowerCase() === 'em yeu anh'){
+        handleYesLike();
+        return;
+      }
+      if(!dodgeEnabled) return; // if disabled (but not love), ignore
+      // move the button to a new random position and count as an "angry" click
+      placeRandomly(noBtn);
+      angryClicks++;
+      updateSadEmoji();
+    });
+
+    // Create floating hearts in the background
+    function createHearts(count = 20){
+      for(let i=0;i<count;i++){
+        const h = document.createElement('div');
+        h.className = 'heart';
+        h.textContent = ['❤️','💖','💗','💕'][Math.floor(Math.random()*4)];
+        const size = 12 + Math.floor(Math.random()*36);
+        h.style.fontSize = size + 'px';
+        const left = Math.random()*100;
+        const delay = Math.random()*-6;
+        const dur = 6 + Math.random()*6;
+        h.style.left = left + 'vw';
+        h.style.bottom = (-10 - Math.random()*30) + 'vh';
+        h.style.animationDuration = dur + 's';
+        h.style.animationDelay = delay + 's';
+        document.body.appendChild(h);
+      }
+    }
+    createHearts();
+
+    // Flood the screen with many hearts (overlay)
+    let heartOverlay = null;
+    function clearHeartFlood(){
+      if(heartOverlay){
+        heartOverlay.remove();
+        heartOverlay = null;
+      }
+    }
+
+    function floodHearts(count = 80){
+      clearHeartFlood();
+      heartOverlay = document.createElement('div');
+      heartOverlay.className = 'heart-fill';
+      for(let i=0;i<count;i++){
+        const h = document.createElement('div');
+        h.className = 'heart';
+        h.textContent = ['❤️','💖','💗','💕'][Math.floor(Math.random()*4)];
+        const size = 12 + Math.floor(Math.random()*56);
+        h.style.fontSize = size + 'px';
+        h.style.left = (Math.random()*100) + 'vw';
+        h.style.top = (Math.random()*120) + 'vh';
+        const dur = 6 + Math.random()*6;
+        const delay = Math.random()*-4;
+        h.style.animationDuration = (dur + Math.random()*4) + 's';
+        h.style.animationDelay = delay + 's';
+        heartOverlay.appendChild(h);
+      }
+      document.body.appendChild(heartOverlay);
+      // auto-remove after some time
+      setTimeout(()=>{ if(heartOverlay) heartOverlay.remove(); heartOverlay = null; }, 8000);
+    }
+
+    // Emit hearts from the center area to create a "shooting from background" effect
+    function emitHeartsBurst(count = 40){
+      const rect = container.getBoundingClientRect();
+      const cx = rect.left + rect.width/2;
+      const cy = rect.top + rect.height/2;
+      for(let i=0;i<count;i++){
+        const h = document.createElement('div');
+        h.className = 'burst-heart';
+        h.textContent = ['❤️','💖','💗','💕'][Math.floor(Math.random()*4)];
+        const dx = (Math.random()-0.5) * (rect.width*0.9);
+        const dy = 80 + Math.random()*rect.height;
+        h.style.left = cx + 'px';
+        h.style.top = cy + 'px';
+        h.style.setProperty('--dx', dx + 'px');
+        h.style.setProperty('--dy', dy + 'px');
+        h.style.fontSize = (12 + Math.floor(Math.random()*40)) + 'px';
+        document.body.appendChild(h);
+        // stagger timing slightly
+        h.style.animationDelay = (Math.random()*200) + 'ms';
+        setTimeout(()=>{ h.remove(); }, 1400 + Math.random()*600);
+      }
+    }
+
+    // Make sure the button doesn't go outside on window resize
+    window.addEventListener('resize', ()=>{
+      if(noBtn.style.position === 'absolute'){
+        const cRect = container.getBoundingClientRect();
+        const elRect = noBtn.getBoundingClientRect();
+        let left = parseFloat(noBtn.style.left || 0);
+        let top = parseFloat(noBtn.style.top || 0);
+        const maxX = Math.max(0, cRect.width - elRect.width - 8);
+        const maxY = Math.max(0, cRect.height - elRect.height - 8 - 60);
+        left = Math.min(left, maxX);
+        top = Math.min(top, maxY);
+        noBtn.style.left = left + 'px';
+        noBtn.style.top = top + 'px';
+      }
+    });
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GitHub Trending Bot — AI-Powered Repo Dashboard</title>
+  <meta name="description" content="Discover today's hottest GitHub repositories with AI-generated summaries and an intelligent chatbot powered by Groq." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <header class="header">
+    <div class="container header-inner">
+      <div class="logo">
+        <span class="logo-icon" aria-hidden="true">🔥</span>
+        <div>
+          <span class="logo-title">GitHub Trending Bot</span>
+          <span class="logo-sub">AI-Powered Repo Dashboard</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span id="repo-badge" class="badge" aria-live="polite" hidden></span>
+        <span id="last-updated" class="last-updated" hidden></span>
+        <button id="refresh-btn" class="btn-icon" title="Refresh repositories" aria-label="Refresh repositories">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── AI Status Banner ─────────────────────────────────────────────────── -->
+  <div id="ai-banner" class="ai-banner" hidden>
+    <div class="container">
+      <span class="ai-banner-icon">⚠️</span>
+      <div class="ai-banner-text">
+        <strong>AI features are limited</strong> — the Groq API key is missing or invalid.
+        <a href="https://console.groq.com/keys" target="_blank" rel="noopener">Get a free key</a>,
+        add it to <code>.env</code> as <code>GROQ_API_KEY=gsk_…</code>, then restart the server.
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Main ────────────────────────────────────────────────────────────── -->
+  <main class="main container">
+
+    <!-- ── Hero ─────────────────────────────────────────────────────────── -->
+    <section class="hero">
+      <div class="hero-pill">✦ Live · Updated daily</div>
+      <h1 class="hero-title">
+        Today's <span class="gradient-text">Trending</span><br/>Repositories
+      </h1>
+      <p class="hero-sub">
+        Fetched from GitHub Search API · Summaries powered by Groq AI (llama-3.3-70b-versatile)
+      </p>
+    </section>
+
+    <!-- ── Trending Repos ─────────────────────────────────────────────────── -->
+    <section id="trending-section" aria-label="Trending repositories">
+
+      <!-- Loading -->
+      <div id="repos-loading" class="state-box">
+        <div class="spinner"></div>
+        <p class="state-label">Fetching trending repos and generating AI summaries…</p>
+        <p class="state-sub">This may take up to 30 seconds on first load</p>
+      </div>
+
+      <!-- Error -->
+      <div id="repos-error" class="state-box error-box" hidden>
+        <div class="state-icon">⚠️</div>
+        <p class="state-label" id="repos-error-msg">Something went wrong.</p>
+        <button class="btn-primary" onclick="loadTrending()">Try again</button>
+      </div>
+
+      <!-- Grid -->
+      <div id="repos-grid" class="repos-grid" hidden></div>
+    </section>
+
+    <!-- ── Chatbot ────────────────────────────────────────────────────────── -->
+    <section id="chat-section" aria-label="Repository chatbot">
+      <div class="section-header">
+        <h2 class="section-title">
+          <span class="section-title-icon">💬</span> Ask the Bot
+        </h2>
+        <p class="section-sub">Ask anything about the repos above</p>
+      </div>
+
+      <div class="chat-wrap">
+        <!-- History -->
+        <div id="chat-history" class="chat-history" role="log" aria-live="polite">
+          <div class="msg bot-msg">
+            <div class="msg-avatar">🤖</div>
+            <div class="msg-bubble">
+              Hi! I've read all the trending repos. Try asking:
+              <em>"Which repo is best for beginners?"</em> or
+              <em>"What Python projects are trending?"</em>
+            </div>
+          </div>
+        </div>
+
+        <!-- Suggested questions -->
+        <div class="chat-suggestions" id="chat-suggestions">
+          <button class="chip" data-q="Which repo is best for beginners?">Best for beginners?</button>
+          <button class="chip" data-q="What are the trending languages today?">Trending languages?</button>
+          <button class="chip" data-q="Which repo has the most stars?">Most starred?</button>
+          <button class="chip" data-q="Give me a quick overview of all repos.">Quick overview</button>
+        </div>
+
+        <!-- Input -->
+        <div class="chat-input-row">
+          <input
+            id="chat-input"
+            class="chat-input"
+            type="text"
+            placeholder="Ask about today's trending repos…"
+            autocomplete="off"
+            disabled
+            aria-label="Chat input"
+          />
+          <button id="chat-send" class="btn-send" disabled aria-label="Send message">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── Footer ──────────────────────────────────────────────────────────── -->
+  <footer class="footer">
+    <div class="container">
+      Built with ❤️ using <strong>GitHub Search API</strong> + <strong>Groq AI</strong> (llama-3.3-70b-versatile) · Cached for 24 hours
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
