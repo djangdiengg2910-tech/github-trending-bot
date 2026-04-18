@@ -8,11 +8,13 @@
 // ── State ─────────────────────────────────────────────────────────────────────
 let currentRepos = [];
 let geminiOk     = false;
+let currentTopic = 'all';
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const aiBanner     = document.getElementById('ai-banner');
 const repoBadge    = document.getElementById('repo-badge');
 const refreshBtn   = document.getElementById('refresh-btn');
+const topicSelect  = document.getElementById('topic-select');
 
 const reposLoading = document.getElementById('repos-loading');
 const reposError   = document.getElementById('repos-error');
@@ -104,7 +106,7 @@ function displayRepos(repos, lastUpdated) {
 }
 
 // ── Load /api/status then /api/trending ──────────────────────────────────────
-async function loadTrending() {
+async function loadTrending(topic = 'all') {
   // Reset UI
   reposLoading.style.display = 'flex';
   reposError.hidden  = true;
@@ -113,6 +115,7 @@ async function loadTrending() {
   aiBanner.hidden    = true;
   setChat(false);
   currentRepos = [];
+  currentTopic = topic;
 
   try {
     // 1. Check Groq availability
@@ -125,7 +128,7 @@ async function loadTrending() {
     if (!geminiOk) aiBanner.hidden = false;
 
     // 2. Fetch trending repos
-    const res  = await fetch('/api/trending');
+    const res  = await fetch(`/api/trending?topic=${encodeURIComponent(topic)}`);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || `HTTP ${res.status}`);
@@ -266,7 +269,7 @@ async function forceRefresh() {
 
   try {
     // Fetch fresh data (bypass cache)
-    const res = await fetch('/api/refresh');
+    const res = await fetch(`/api/refresh?topic=${encodeURIComponent(currentTopic)}`);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || `HTTP ${res.status}`);
@@ -294,6 +297,14 @@ chatInput.addEventListener('keydown', (e) => {
 });
 refreshBtn.addEventListener('click', forceRefresh);
 
+// Topic selector
+if (topicSelect) {
+  topicSelect.addEventListener('change', (e) => {
+    const selectedTopic = e.target.value;
+    loadTrending(selectedTopic);
+  });
+}
+
 // Chip suggestions
 suggestions.addEventListener('click', (e) => {
   const chip = e.target.closest('.chip');
@@ -301,4 +312,4 @@ suggestions.addEventListener('click', (e) => {
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-loadTrending();
+loadTrending('all');

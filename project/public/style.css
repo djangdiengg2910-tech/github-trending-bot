@@ -121,6 +121,34 @@ body {
   gap: 10px;
 }
 
+.topic-select {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--t1);
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: var(--transition);
+  min-width: 140px;
+}
+
+.topic-select:hover {
+  border-color: var(--border-h);
+}
+
+.topic-select:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px rgba(88,166,255,0.2);
+}
+
+.topic-select option {
+  background: var(--bg-card);
+  color: var(--t1);
+}
+
 .badge {
   display: inline-flex;
   align-items: center;

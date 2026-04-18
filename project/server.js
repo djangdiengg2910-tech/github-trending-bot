@@ -50,19 +50,20 @@ app.get('/api/status', (_req, res) => {
 
 // ── GET /api/trending ─────────────────────────────────────────────────────────
 app.get('/api/trending', async (req, res) => {
-  const CACHE_KEY = 'trending_repos';
+  const topic = req.query.topic || 'all';
+  const CACHE_KEY = `trending_repos_${topic}`;
 
   try {
     const cached = cache.get(CACHE_KEY);
     if (cached) {
-      console.log('[cache] Returning cached trending repos');
+      console.log('[cache] Returning cached trending repos for topic:', topic);
       const lastUpdated = cache.getLastUpdated(CACHE_KEY);
-      return res.json({ repos: cached, lastUpdated });
+      return res.json({ repos: cached, lastUpdated, topic });
     }
 
     // 1. Fetch repos from GitHub (with date-range fallback)
-    console.log('[github] Fetching trending repos…');
-    const repos = await fetchTrendingRepos(10);
+    console.log('[github] Fetching trending repos for topic:', topic);
+    const repos = await fetchTrendingRepos(10, topic);
 
     // 2. Enrich with Groq summaries (skip if key is invalid)
     const enriched = [];
@@ -99,7 +100,7 @@ app.get('/api/trending', async (req, res) => {
     cache.set(CACHE_KEY, enriched);
     console.log('[cache] Trending repos cached for 24 hours');
     const lastUpdated = cache.getLastUpdated(CACHE_KEY);
-    return res.json({ repos: enriched, lastUpdated });
+    return res.json({ repos: enriched, lastUpdated, topic });
 
   } catch (err) {
     console.error('[github] Error:', err.message);
@@ -133,15 +134,16 @@ app.post('/api/chat', async (req, res) => {
 
 // ── GET /api/refresh ──────────────────────────────────────────────────────────
 app.get('/api/refresh', async (req, res) => {
-  const CACHE_KEY = 'trending_repos';
+  const topic = req.query.topic || 'all';
+  const CACHE_KEY = `trending_repos_${topic}`;
 
   try {
     // Clear existing cache
     cache.del(CACHE_KEY);
 
     // Fetch fresh data
-    console.log('[refresh] Force refreshing trending repos…');
-    const repos = await fetchTrendingRepos(10);
+    console.log('[refresh] Force refreshing trending repos for topic:', topic);
+    const repos = await fetchTrendingRepos(10, topic);
 
     // Enrich with summaries
     const enriched = [];
@@ -171,7 +173,7 @@ app.get('/api/refresh', async (req, res) => {
     cache.set(CACHE_KEY, enriched);
     const lastUpdated = cache.getLastUpdated(CACHE_KEY);
     console.log('[refresh] Force refresh completed');
-    return res.json({ repos: enriched, lastUpdated, refreshed: true });
+    return res.json({ repos: enriched, lastUpdated, refreshed: true, topic });
 
   } catch (err) {
     console.error('[refresh] Error:', err.message);

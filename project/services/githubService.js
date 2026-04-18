@@ -26,13 +26,19 @@ function getDateDaysAgo(daysAgo = 0) {
  * @param {object} headers
  * @param {string} sinceDate - ISO date string YYYY-MM-DD
  * @param {number} perPage
+ * @param {string} topic - Optional topic to filter by
  * @returns {Promise<Array>} raw items from GitHub
  */
-async function searchRepos(headers, sinceDate, perPage) {
+async function searchRepos(headers, sinceDate, perPage, topic = '') {
+  let query = `created:>${sinceDate}`;
+  if (topic && topic !== 'all') {
+    query += ` topic:${topic}`;
+  }
+
   const response = await axios.get(`${GITHUB_API_BASE}/search/repositories`, {
     headers,
     params: {
-      q: `created:>${sinceDate}`,
+      q: query,
       sort: 'stars',
       order: 'desc',
       per_page: perPage,
@@ -46,9 +52,10 @@ async function searchRepos(headers, sinceDate, perPage) {
  * Fetch trending repositories with smart date fallback.
  * Tries: today → last 7 days → last 30 days until results are found.
  * @param {number} perPage - Number of repos to return
+ * @param {string} topic - Optional topic to filter by (default: 'all')
  * @returns {Promise<Array>} Array of normalised repo objects
  */
-async function fetchTrendingRepos(perPage = 10) {
+async function fetchTrendingRepos(perPage = 10, topic = 'all') {
   const token = process.env.GITHUB_TOKEN;
   const headers = { Accept: 'application/vnd.github.v3+json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -64,7 +71,7 @@ async function fetchTrendingRepos(perPage = 10) {
   for (const window of windows) {
     const sinceDate = getDateDaysAgo(window.daysAgo);
     console.log(`[github] Searching repos created since ${sinceDate} (${window.label})…`);
-    items = await searchRepos(headers, sinceDate, perPage);
+    items = await searchRepos(headers, sinceDate, perPage, topic);
     if (items.length > 0) {
       console.log(`[github] Found ${items.length} repos using window: ${window.label}`);
       break;
