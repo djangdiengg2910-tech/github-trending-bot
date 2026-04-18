@@ -3,17 +3,17 @@
  *
  * Routes:
  *   GET  /api/trending   – trending repos with AI summaries (24-hour cache)
- *   GET  /api/status     – reports whether Groq AI is available
- *   POST /api/chat       – chatbot Q&A using Groq (llama-3.3-70b-versatile)
+ *   GET  /api/status     – reports whether Gemini AI is available
+ *   POST /api/chat       – chatbot Q&A using Gemini
  */
 
-require('dotenv').config();
+require('dotenv').config({ override: true });
 
 const express = require('express');
 const path    = require('path');
 
 const { fetchTrendingRepos }                         = require('./services/githubService');
-const { summarizeRepo, answerQuestion, isAvailable } = require('./services/groqService');
+const { summarizeRepo, answerQuestion, isAvailable } = require('./services/geminiService');
 const cache                                          = require('./services/cacheService');
 
 const app  = express();
@@ -21,30 +21,42 @@ const PORT = process.env.PORT || 3000;
 
 // ── Startup check ─────────────────────────────────────────────────────────────
 (function checkEnv() {
-  const key = process.env.GROQ_API_KEY || '';
+  const key = process.env.GEMINI_API_KEY || '';
   if (!key) {
-    console.warn('\n⚠️  GROQ_API_KEY is not set — AI features will be disabled.\n');
-  } else if (!key.startsWith('gsk_')) {
+    console.warn('\n⚠️  GEMINI_API_KEY is not set — AI features will be disabled.\n');
+  } else if (!key.startsWith('AIza')) {
     console.warn(
-      '\n⚠️  GROQ_API_KEY looks invalid (expected format: gsk_…).\n' +
-      '   Get a free key at: https://console.groq.com/keys\n' +
+      '\n⚠️  GEMINI_API_KEY looks invalid (expected format: AIza…).\n' +
+      '   Get a free key at: https://aistudio.google.com/app/apikey\n' +
       '   AI features will be disabled until a valid key is provided.\n'
     );
   } else {
-    console.log('✅ Groq API key detected.\n');
+    console.log('✅ Gemini API key detected.\n');
   }
 })();
 
 // ── Middleware ─────────────────────────────────────────────────────────────────
 app.use(express.json());
+
+// Enable CORS for frontend on localhost:3001
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'http://localhost:3001');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── GET /api/status ───────────────────────────────────────────────────────────
-// Lets the frontend know whether Groq is functional.
+// Lets the frontend know whether Gemini is functional.
 app.get('/api/status', (_req, res) => {
   res.json({
-    groqAvailable: isAvailable(),
-    groqKeyValid:  (process.env.GROQ_API_KEY || '').startsWith('gsk_'),
+    geminiAvailable: isAvailable(),
+    geminiKeyValid:  (process.env.GEMINI_API_KEY || '').startsWith('AIza'),
   });
 });
 
@@ -67,26 +79,26 @@ app.get('/api/trending', async (req, res) => {
     console.log('[github] Fetching repos for mode:', mode, 'days:', days, 'topic:', topic);
     const repos = await fetchTrendingRepos(10, mode, days, topic);
 
-    // 2. Enrich with Groq summaries (skip if key is invalid)
+    // 2. Enrich with Gemini summaries (skip if key is invalid)
     const enriched = [];
-    const groqOk = isAvailable();
+    const geminiOk = isAvailable();
 
-    if (groqOk) {
-      console.log(`[groq] Summarising ${repos.length} repos sequentially…`);
+    if (geminiOk) {
+      console.log(`[gemini] Summarising ${repos.length} repos sequentially…`);
       for (const repo of repos) {
         try {
           const summary = await summarizeRepo(repo.name, repo.description, repo.language);
           enriched.push({ ...repo, summary });
-          console.log(`[groq] ✓ ${repo.name}`);
+          console.log(`[gemini] ✓ ${repo.name}`);
         } catch (err) {
-          console.error(`[groq] ✗ ${repo.name}: ${err.message}`);
+          console.error(`[gemini] ✗ ${repo.name}: ${err.message}`);
           enriched.push({ ...repo, summary: 'Summary unavailable' });
         }
         // Small pause between calls to respect RPM limits
         if (isAvailable()) await new Promise((r) => setTimeout(r, 300));
         else {
-          // Circuit opened mid-batch — fill remaining without Groq
-          console.warn('[groq] Circuit open — skipping remaining summaries');
+          // Circuit opened mid-batch — fill remaining without Gemini
+          console.warn('[gemini] Circuit open — skipping remaining summaries');
           break;
         }
       }
@@ -95,7 +107,7 @@ app.get('/api/trending', async (req, res) => {
         enriched.push({ ...repos[i], summary: 'Summary unavailable' });
       }
     } else {
-      console.log('[groq] Skipping summaries — Groq API key is invalid/missing');
+      console.log('[gemini] Skipping summaries — Gemini API key is invalid/missing');
       repos.forEach((r) => enriched.push({ ...r, summary: 'Summary unavailable' }));
     }
 
@@ -119,18 +131,17 @@ app.post('/api/chat', async (req, res) => {
   }
 
   if (!isAvailable()) {
-    return res.status(503).json({
-      error: 'Groq API is unavailable. Please set a valid GROQ_API_KEY (get one free at https://console.groq.com/keys).',
-    });
-  }
-
+      return res.status(503).json({
+        error: 'Gemini API is unavailable. Please set a valid GEMINI_API_KEY (get one free at https://aistudio.google.com/app/apikey).',
+      });
+    }
   try {
     console.log(`[chat] "${question}"`);
     const answer = await answerQuestion(question, repos);
     return res.json({ answer });
   } catch (err) {
     console.error('[chat] Error:', err.message);
-    return res.status(500).json({ error: 'Failed to get answer from Groq', details: err.message });
+    return res.status(500).json({ error: 'Failed to get answer from Gemini', details: err.message });
   }
 });
 
@@ -151,9 +162,9 @@ app.get('/api/refresh', async (req, res) => {
 
     // Enrich with summaries
     const enriched = [];
-    const groqOk = isAvailable();
+    const geminiOk = isAvailable();
 
-    if (groqOk) {
+    if (geminiOk) {
       console.log(`[refresh] Summarising ${repos.length} repos…`);
       for (const repo of repos) {
         try {
@@ -206,9 +217,9 @@ async function autoRefreshCache() {
       // Fetch new data (this will set new cache)
       const repos = await fetchTrendingRepos(10);
       const enriched = [];
-      const groqOk = isAvailable();
+      const geminiOk = isAvailable();
 
-      if (groqOk) {
+      if (geminiOk) {
         console.log(`[auto-refresh] Summarising ${repos.length} repos...`);
         for (const repo of repos) {
           try {
@@ -255,9 +266,9 @@ async function dailyRefreshJob() {
     cache.del(CACHE_KEY);
     const repos = await fetchTrendingRepos(10);
     const enriched = [];
-    const groqOk = isAvailable();
+    const geminiOk = isAvailable();
 
-    if (groqOk) {
+    if (geminiOk) {
       console.log(`[daily-refresh] Summarising ${repos.length} repos...`);
       for (const repo of repos) {
         try {
