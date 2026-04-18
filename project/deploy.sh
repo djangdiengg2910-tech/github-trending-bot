@@ -28,7 +28,7 @@ case $PLATFORM in
     echo ""
     echo "2. Go to $PLATFORM and import from GitHub"
     echo "3. Add these environment variables:"
-    echo "   - GROQ_API_KEY=gsk_..."
+    echo "   - GEMINI_API_KEY=AIza..."
     echo "   - GITHUB_TOKEN=ghp_..."
     echo "   - DAILY_REFRESH_TIME=00:00"
     echo ""
@@ -47,7 +47,7 @@ case $PLATFORM in
     echo "2. Click 'Create' → 'Import from GitHub'"
     echo "3. Paste: https://github.com/YOUR_USERNAME/github-trending-bot"
     echo "4. Add Secrets:"
-    echo "   - GROQ_API_KEY"
+    echo "   - GEMINI_API_KEY"
     echo "   - GITHUB_TOKEN"
     echo "5. Click 'Run'"
     ;;

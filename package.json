@@ -1,7 +1,7 @@
 {
   "name": "github-trending-summary-bot",
   "version": "1.0.0",
-  "description": "GitHub Trending Repo Summary Bot powered by Groq AI",
+  "description": "GitHub Trending Repo Summary Bot powered by Gemini AI",
   "main": "project/server.js",
   "scripts": {
     "start": "node project/server.js",

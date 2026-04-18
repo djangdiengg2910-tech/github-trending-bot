@@ -1,8 +1,8 @@
 # 🔥 GitHub Trending Bot
 
-> AI-powered dashboard that fetches today's trending GitHub repositories and provides an intelligent chatbot interface — powered by **Groq AI**.
+> AI-powered dashboard that fetches today's hottest GitHub repositories and provides an intelligent chatbot interface — powered by **Gemini AI**.
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template?template=https%3A%2F%2Fgithub.com%2Fyour-username%2Fgithub-trending-bot&envs=GROQ_API_KEY%2CGITHUB_TOKEN&requiredEnvs=GROQ_API_KEY&GROQAPIKEYDescription=Get+at+https%3A%2F%2Fconsole.groq.com%2Fkeys&GITHUBTOKENDescription=Optional%3A+get+at+https%3A%2F%2Fgithub.com%2Fsettings%2Ftokens)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template?template=https%3A%2F%2Fgithub.com%2Fyour-username%2Fgithub-trending-bot&envs=GEMINI_API_KEY%2CGITHUB_TOKEN&requiredEnvs=GEMINI_API_KEY&GEMINIAPIKEYDescription=Get+at+https%3A%2F%2Faistudio.google.com%2Fapp%2Fapikey&GITHUBTOKENDescription=Optional%3A+get+at+https%3A%2F%2Fgithub.com%2Fsettings%2Ftokens)
 
 👉 **Want to deploy online?** See [QUICK_DEPLOY.md](QUICK_DEPLOY.md) (5 minutes setup)
 
@@ -11,14 +11,14 @@
 ## Features
 
 - 🔎 **Trending Repos** — Fetches top repos from GitHub Search API (today → 7 days → 30 days fallback)
-- ✨ **AI Summaries** — Each repo gets a 2–3 sentence Groq-powered summary
+- ✨ **AI Summaries** — Each repo gets a 2–3 sentence Gemini-powered summary
 - 💬 **Chatbot** — Ask anything about the trending repos in natural language
 - 🔄 **Daily Auto-Refresh** — Automatically refreshes trending repos daily at midnight (configurable)
 - 🔄 **Auto-Refresh on Expiry** — Cache auto-refreshes when expiring within 1 hour
 - 🔄 **Manual Refresh** — Force refresh trending data anytime with the refresh button
 - 📅 **Last Updated** — Shows when data was last fetched
 - ⚡ **24-hour Cache** — Results are cached in-memory to avoid repeated API calls
-- 🔒 **Circuit Breaker** — Gracefully handles invalid/missing Groq API keys
+- 🔒 **Circuit Breaker** — Gracefully handles invalid/missing Gemini API keys
 
 ---
 
@@ -28,7 +28,7 @@
 |----------|-----------------------------------|
 | Backend  | Node.js + Express                 |
 | Frontend | Vanilla JS + HTML + CSS           |
-| AI       | Groq (llama-3.3-70b-versatile)    |
+| AI       | Gemini                             |
 | Data     | GitHub Search API                 |
 | Cache    | In-memory (Map + TTL)             |
 
@@ -53,9 +53,9 @@ Copy `.env.example` to `.env` and fill in your keys:
 # Create at: https://github.com/settings/tokens (no scopes needed for public repos)
 GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
 
-# Groq API Key — MUST start with "gsk_"
-# Get a free key at: https://console.groq.com/keys
-GROQ_API_KEY=gsk_...
+# Gemini API Key — MUST start with "AIza"
+# Get a free key at: https://aistudio.google.com/app/apikey
+GEMINI_API_KEY=AIza...
 
 PORT=3000
 
@@ -63,7 +63,7 @@ PORT=3000
 DAILY_REFRESH_TIME=00:00
 ```
 
-> ⚠️ **Important**: The Groq key must start with `gsk_`. Keys starting with `AQ.` are OAuth tokens (Vertex AI) and will **not** work with the Groq REST API.
+> ⚠️ **Important**: The Gemini key must start with `AIza`. Keys with other prefixes will **not** work with the Gemini REST API.
 
 ### 3. Run
 
@@ -98,7 +98,7 @@ For detailed guides on all platforms, see [DEPLOYMENT.md](DEPLOYMENT.md)
 project/
 ├── server.js               # Express server + API routes
 ├── services/
-│   ├── groqService.js      # Groq API wrapper (retry + circuit-breaker)
+│   ├── geminiService.js    # Gemini API wrapper (retry + circuit-breaker)
 │   ├── githubService.js    # GitHub Search API wrapper (date fallback)
 │   └── cacheService.js     # In-memory TTL cache
 ├── public/
@@ -116,7 +116,7 @@ project/
 
 | Method | Path            | Description                                      |
 |--------|-----------------|--------------------------------------------------|
-| GET    | `/api/status`   | Returns Groq API availability status            |
+| GET    | `/api/status`   | Returns Gemini API availability status             |
 | GET    | `/api/trending` | Returns trending repos with AI summaries (cached)|
 | GET    | `/api/refresh`  | Force refresh trending repos (bypass cache)     |
 | POST   | `/api/chat`     | Chatbot Q&A — body: `{ question, repos[] }`     |
@@ -127,7 +127,7 @@ project/
 
 | Variable            | Required | Description                                         |
 |---------------------|----------|-----------------------------------------------------|
-| `GROQ_API_KEY`      | Yes*     | Groq API key (format: `gsk_...`)                    |
+| `GEMINI_API_KEY`    | Yes*     | Gemini API key (format: `AIza...`)                 |
 | `GITHUB_TOKEN`      | No       | GitHub PAT — increases rate limit from 60→5000      |
 | `PORT`              | No       | Server port (default: `3000`)                       |
 | `DAILY_REFRESH_TIME`| No       | Daily refresh time (HH:mm, 24h format, default `00:00`) |
@@ -148,7 +148,7 @@ project/
 ## Troubleshooting
 
 ### AI features disabled / "Summary unavailable"
-- Ensure `GROQ_API_KEY` starts with `gsk_` — get one free at https://console.groq.com/keys
+- Ensure `GEMINI_API_KEY` starts with `AIza` — get one free at https://aistudio.google.com/app/apikey
 - Restart the server after updating `.env`
 
 ### GitHub rate limit errors
@@ -156,5 +156,5 @@ project/
 - Create one at https://github.com/settings/tokens
 
 ### Chatbot not responding
-- The chatbot requires a valid Groq API key
+- Ensure `GEMINI_API_KEY` is set and starts with `AIza`
 - Check the warning banner at the top of the page for guidance

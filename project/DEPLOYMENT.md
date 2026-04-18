@@ -33,7 +33,7 @@ Railway cung cấp free tier và deploy cực đơn giản (không cần card t�
 1. Vào **Variables** tab
 2. Thêm:
    ```
-   GROQ_API_KEY=gsk_...
+   GEMINI_API_KEY=AIza...
    GITHUB_TOKEN=ghp_...
    DAILY_REFRESH_TIME=00:00
    ```
@@ -63,7 +63,7 @@ Render có free tier nhưng app sẽ sleep nếu không có traffic trong 15 ph�
 1. **Environment** tab
 2. Thêm biến:
    ```
-   GROQ_API_KEY=gsk_...
+   GEMINI_API_KEY=AIza...
    GITHUB_TOKEN=ghp_...
    ```
 
@@ -93,7 +93,7 @@ git push heroku main
 
 #### Bước 3: Biến môi trường
 ```bash
-heroku config:set GROQ_API_KEY=gsk_...
+heroku config:set GEMINI_API_KEY=AIza...
 heroku config:set GITHUB_TOKEN=ghp_...
 heroku open
 ```
@@ -130,7 +130,7 @@ npm install
 
 # Tạo .env file
 nano .env
-# Thêm: GROQ_API_KEY, GITHUB_TOKEN, PORT=80 (hoặc 3000 + proxy)
+# Thêm: GEMINI_API_KEY, GITHUB_TOKEN, PORT=80 (hoặc 3000 + proxy)
 ```
 
 #### Bước 4: Chạy với PM2 (process manager)
@@ -175,7 +175,7 @@ Cách nhanh nhất cho testing online.
 2. Dán URL repo
 3. Replit tự detect Node.js, setup **Secrets**
 4. Thêm biến:
-   - `GROQ_API_KEY=gsk_...`
+   - `GEMINI_API_KEY=AIza...`
    - `GITHUB_TOKEN=ghp_...`
 5. Bấm **Run**
 
@@ -226,7 +226,7 @@ npm install
 - Ứng dụng này sử dụng in-memory cache, không cần DB
 
 ### AI features không hoạt động
-- Kiểm tra `GROQ_API_KEY` và `GITHUB_TOKEN` trong environment
+- Kiểm tra `GEMINI_API_KEY` và `GITHUB_TOKEN` trong environment
 
 ---
 

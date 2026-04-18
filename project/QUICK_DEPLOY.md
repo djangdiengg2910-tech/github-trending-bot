@@ -4,7 +4,7 @@
 
 ### Prerequisite
 - GitHub account
-- Groq API key from https://console.groq.com/keys
+- Gemini API key from https://aistudio.google.com/app/apikey
 
 ### Steps
 
@@ -26,7 +26,7 @@
    - In Railway Dashboard → **Variables** tab
    - Add:
      ```
-     GROQ_API_KEY=gsk_your_key_here
+     GEMINI_API_KEY=AIza_your_key_here
      GITHUB_TOKEN=ghp_your_token_here (optional)
      DAILY_REFRESH_TIME=00:00
      ```
@@ -77,9 +77,9 @@ Once deployed, share the URL:
 - Make sure all dependencies are installed: `npm install`
 - Check `package.json` exists
 
-### ❌ "GROQ_API_KEY is not set"
-- Add `GROQ_API_KEY` to Environment Variables in your cloud dashboard
-- Make sure it starts with `gsk_`
+### ❌ "GEMINI_API_KEY is not set"
+- Add `GEMINI_API_KEY` to Environment Variables in your cloud dashboard
+- Make sure it starts with `AIza`
 
 ### ❌ "Port already in use"
 - Cloud platforms auto-assign ports, no action needed
