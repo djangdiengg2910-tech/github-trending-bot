@@ -60,7 +60,19 @@
         </div>
 
         <span id="repo-badge" class="badge" aria-live="polite" hidden></span>
+        <span id="cache-indicator" class="badge badge-secondary" aria-live="polite" hidden>Cached</span>
         <span id="last-updated" class="last-updated" hidden></span>
+        <div id="auth-panel" class="auth-panel">
+          <button id="login-toggle" class="btn-icon" title="Login" aria-label="Login">Login</button>
+          <div id="login-form" class="login-form" hidden>
+            <input id="username-input" type="text" placeholder="Enter username" aria-label="Enter username" />
+            <button id="login-submit" class="btn-primary">Sign in</button>
+          </div>
+          <div id="user-display" class="user-display" hidden>
+            <span>Hi, <strong id="user-name"></strong></span>
+            <button id="logout-btn" class="btn-ghost" aria-label="Logout">Logout</button>
+          </div>
+        </div>
         <button id="refresh-btn" class="btn-icon" title="Refresh repositories" aria-label="Refresh repositories">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
           Refresh
@@ -108,8 +120,8 @@
       <!-- Error -->
       <div id="repos-error" class="state-box error-box" hidden>
         <div class="state-icon">⚠️</div>
-        <p class="state-label" id="repos-error-msg">Something went wrong.</p>
-        <button class="btn-primary" onclick="loadTrending()">Try again</button>
+        <p class="state-label" id="repos-error-msg">An error occurred while loading repositories.</p>
+        <button class="btn-primary" onclick="loadTrending(currentTopic, currentMode, currentDays)">Try again</button>
       </div>
 
       <!-- Grid -->

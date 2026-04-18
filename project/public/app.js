@@ -11,6 +11,104 @@ let geminiOk     = false;
 let currentTopic = 'all';
 let currentMode  = 'stars';
 let currentDays  = 7;
+let currentUser  = null;
+
+const USER_STORAGE_KEY = 'trendingBotUser';
+const CACHE_WINDOW_MS  = 24 * 60 * 60 * 1000; // 24 hours
+
+function getUserStorageKey() {
+  return `trendingBotCache:${currentUser || 'guest'}`;
+}
+
+function loadSearchCache() {
+  try {
+    return JSON.parse(localStorage.getItem(getUserStorageKey())) || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveSearchCache(cache) {
+  try {
+    localStorage.setItem(getUserStorageKey(), JSON.stringify(cache));
+  } catch (err) {
+    console.warn('[cache] Could not save search cache:', err.message);
+  }
+}
+
+function makeSearchKey(topic, mode, days) {
+  return `${topic}|${mode}|${days}`;
+}
+
+function getCachedSearch(topic, mode, days) {
+  const cache = loadSearchCache();
+  const entry = cache[makeSearchKey(topic, mode, days)];
+  if (!entry || !entry.repos) return null;
+  const age = Date.now() - (entry.timestamp || 0);
+  if (age > CACHE_WINDOW_MS) return null;
+  return entry;
+}
+
+function saveCachedSearch(topic, mode, days, repos, lastUpdated) {
+  const cache = loadSearchCache();
+  cache[makeSearchKey(topic, mode, days)] = {
+    repos,
+    lastUpdated,
+    timestamp: Date.now(),
+  };
+  saveSearchCache(cache);
+}
+
+function getStaleSearch(topic, mode, days) {
+  const cache = loadSearchCache();
+  return cache[makeSearchKey(topic, mode, days)];
+}
+
+function setCacheIndicator(active) {
+  cacheIndicator.hidden = !active;
+}
+
+function renderAuthState() {
+  if (currentUser) {
+    loginToggle.hidden = true;
+    loginForm.hidden   = true;
+    userDisplay.hidden = false;
+    userNameEl.textContent = currentUser;
+  } else {
+    loginToggle.hidden = false;
+    loginForm.hidden   = true;
+    userDisplay.hidden = true;
+    userNameEl.textContent = '';
+  }
+}
+
+async function updateGeminiStatus() {
+  try {
+    const sr = await fetch('/api/status');
+    const sd = await sr.json();
+    geminiOk = sd.geminiAvailable && sd.geminiKeyValid;
+  } catch (_) {
+    geminiOk = false;
+  }
+  if (!geminiOk) aiBanner.hidden = false;
+}
+
+function initAuth() {
+  currentUser = localStorage.getItem(USER_STORAGE_KEY);
+  renderAuthState();
+}
+
+function signIn(username) {
+  currentUser = username;
+  localStorage.setItem(USER_STORAGE_KEY, username);
+  renderAuthState();
+}
+
+function signOut() {
+  localStorage.removeItem(USER_STORAGE_KEY);
+  currentUser = null;
+  renderAuthState();
+}
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const aiBanner     = document.getElementById('ai-banner');
@@ -30,6 +128,14 @@ const chatHistory  = document.getElementById('chat-history');
 const chatInput    = document.getElementById('chat-input');
 const chatSend     = document.getElementById('chat-send');
 const suggestions  = document.getElementById('chat-suggestions');
+const cacheIndicator = document.getElementById('cache-indicator');
+const loginToggle   = document.getElementById('login-toggle');
+const loginForm     = document.getElementById('login-form');
+const usernameInput = document.getElementById('username-input');
+const loginSubmit   = document.getElementById('login-submit');
+const userDisplay   = document.getElementById('user-display');
+const userNameEl    = document.getElementById('user-name');
+const logoutBtn     = document.getElementById('logout-btn');
 
 // ── Language → colour map ─────────────────────────────────────────────────────
 const LANG_COLOR = {
@@ -134,18 +240,25 @@ async function loadTrending(topic = 'all', mode = 'stars', days = 7) {
   currentTopic = topic;
   currentMode  = mode;
   currentDays  = days;
+  setCacheIndicator(false);
 
   try {
-    // 1. Check Gemini availability
-    try {
-      const sr = await fetch('/api/status');
-      const sd = await sr.json();
-      geminiOk = sd.geminiAvailable && sd.geminiKeyValid;
-    } catch (_) { geminiOk = false; }
+    // 1. Check Gemini availability first so chat state is correct
+    await updateGeminiStatus();
 
-    if (!geminiOk) aiBanner.hidden = false;
+    // 2. Try local cache first to save API calls and Gemini tokens
+    const cached = getCachedSearch(topic, mode, days);
+    if (cached) {
+      currentRepos = cached.repos;
+      const lastUpdated = cached.lastUpdated || cached.timestamp;
+      reposLoading.style.display = 'none';
+      displayRepos(currentRepos, lastUpdated);
+      setCacheIndicator(true);
+      setChat(geminiOk);
+      return;
+    }
 
-    // 2. Fetch trending repos
+    // 2. Fetch trending repos from backend
     const params = new URLSearchParams({
       topic: topic,
       mode: mode,
@@ -162,11 +275,25 @@ async function loadTrending(topic = 'all', mode = 'stars', days = 7) {
 
     reposLoading.style.display = 'none';
     displayRepos(currentRepos, lastUpdated);
+    saveCachedSearch(topic, mode, days, currentRepos, lastUpdated);
     setChat(true);
 
   } catch (err) {
+    const stale = getStaleSearch(topic, mode, days);
+    if (stale && stale.repos && stale.repos.length) {
+      currentRepos = stale.repos;
+      reposLoading.style.display = 'none';
+      displayRepos(currentRepos, stale.lastUpdated || stale.timestamp);
+      setCacheIndicator(true);
+      reposErrMsg.textContent = `Loaded cached results because the request failed: ${err.message}`;
+      reposError.hidden = false;
+      console.warn('[app] loadTrending fallback to stale cache:', err);
+      setChat(true);
+      return;
+    }
+
     reposLoading.style.display = 'none';
-    reposErrMsg.textContent    = err.message;
+    reposErrMsg.textContent = err.message || 'Failed to load repositories.';
     reposError.hidden          = false;
     console.error('[app] loadTrending error:', err);
   }
@@ -182,6 +309,7 @@ async function forceRefresh() {
   aiBanner.hidden    = true;
   setChat(false);
   currentRepos = [];
+  setCacheIndicator(false);
 
   try {
     // Fetch fresh data (bypass cache)
@@ -201,11 +329,25 @@ async function forceRefresh() {
 
     reposLoading.style.display = 'none';
     displayRepos(currentRepos, lastUpdated);
+    saveCachedSearch(currentTopic, currentMode, currentDays, currentRepos, lastUpdated);
     setChat(true);
 
   } catch (err) {
+    const stale = getStaleSearch(currentTopic, currentMode, currentDays);
+    if (stale && stale.repos && stale.repos.length) {
+      currentRepos = stale.repos;
+      reposLoading.style.display = 'none';
+      displayRepos(currentRepos, stale.lastUpdated || stale.timestamp);
+      setCacheIndicator(true);
+      reposErrMsg.textContent = `Could not refresh; showing cached results: ${err.message}`;
+      reposError.hidden = false;
+      console.warn('[app] forceRefresh fallback to stale cache:', err);
+      setChat(true);
+      return;
+    }
+
     reposLoading.style.display = 'none';
-    reposErrMsg.textContent    = err.message;
+    reposErrMsg.textContent    = err.message || 'Failed to refresh repositories.';
     reposError.hidden          = false;
     console.error('[app] forceRefresh error:', err);
   }
@@ -380,6 +522,25 @@ function handleDateChange() {
 }
 
 // ── Event listeners ───────────────────────────────────────────────────────────
+loginToggle.addEventListener('click', () => {
+  loginForm.hidden = !loginForm.hidden;
+  if (!loginForm.hidden) usernameInput.focus();
+});
+loginSubmit.addEventListener('click', () => {
+  const username = usernameInput.value.trim();
+  if (!username) return;
+  signIn(username);
+});
+usernameInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const username = usernameInput.value.trim();
+    if (!username) return;
+    signIn(username);
+  }
+});
+logoutBtn.addEventListener('click', signOut);
+
 chatSend.addEventListener('click', () => sendMessage());
 chatInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
@@ -419,4 +580,5 @@ suggestions.addEventListener('click', (e) => {
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+initAuth();
 loadTrending('all', 'stars', 7);

@@ -258,6 +258,75 @@ body {
   letter-spacing: 0.03em;
 }
 
+.badge-secondary {
+  background: rgba(88,166,255,0.12);
+  border-color: rgba(88,166,255,0.25);
+  color: var(--blue);
+}
+
+.auth-panel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.btn-icon {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 999px;
+  color: var(--t1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-icon:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.login-form,
+.user-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 999px;
+  padding: 6px 10px;
+}
+
+.login-form input {
+  background: transparent;
+  border: none;
+  color: var(--t1);
+  width: 120px;
+  font-size: 0.82rem;
+  outline: none;
+}
+
+.login-form button,
+.user-display button,
+.btn-ghost {
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.08);
+  color: var(--t1);
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+
+.login-form button:hover,
+.user-display button:hover,
+.btn-ghost:hover {
+  background: rgba(255,255,255,0.12);
+}
+
 .last-updated {
   font-size: 0.75rem;
   color: var(--t2);
