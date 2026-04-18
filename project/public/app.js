@@ -9,12 +9,17 @@
 let currentRepos = [];
 let geminiOk     = false;
 let currentTopic = 'all';
+let currentMode  = 'stars';
+let currentDays  = 7;
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const aiBanner     = document.getElementById('ai-banner');
 const repoBadge    = document.getElementById('repo-badge');
 const refreshBtn   = document.getElementById('refresh-btn');
-const topicSelect  = document.getElementById('topic-select');
+const topicInput   = document.getElementById('topic-input');
+const topicSuggestions = document.getElementById('topic-suggestions');
+const datePickerWrapper = document.getElementById('date-picker-wrapper');
+const dateSelect   = document.getElementById('date-select');
 
 const reposLoading = document.getElementById('repos-loading');
 const reposError   = document.getElementById('repos-error');
@@ -36,6 +41,17 @@ const LANG_COLOR = {
   Dart:'#00B4AB',       Scala:'#c22d40',        Elixir:'#6e4a7e',
 };
 const langColor = (l) => LANG_COLOR[l] || '#484f58';
+
+// ── Popular topics for suggestions ─────────────────────────────────────────────
+const POPULAR_TOPICS = [
+  'javascript', 'python', 'machine-learning', 'web-development', 'react',
+  'nodejs', 'typescript', 'go', 'rust', 'java', 'cpp', 'csharp', 'php',
+  'ruby', 'swift', 'kotlin', 'dart', 'scala', 'elixir', 'shell', 'docker',
+  'kubernetes', 'aws', 'android', 'ios', 'blockchain', 'data-science',
+  'devops', 'game-development', 'mobile', 'security', 'testing', 'ui-ux',
+  'vue', 'angular', 'svelte', 'nextjs', 'nuxt', 'express', 'fastapi',
+  'django', 'flask', 'spring', 'laravel', 'rails', 'dotnet', 'flutter'
+];
 
 // ── XSS guard ─────────────────────────────────────────────────────────────────
 const esc = (s) => s == null ? '' : String(s)
@@ -106,7 +122,7 @@ function displayRepos(repos, lastUpdated) {
 }
 
 // ── Load /api/status then /api/trending ──────────────────────────────────────
-async function loadTrending(topic = 'all') {
+async function loadTrending(topic = 'all', mode = 'stars', days = 7) {
   // Reset UI
   reposLoading.style.display = 'flex';
   reposError.hidden  = true;
@@ -116,6 +132,8 @@ async function loadTrending(topic = 'all') {
   setChat(false);
   currentRepos = [];
   currentTopic = topic;
+  currentMode  = mode;
+  currentDays  = days;
 
   try {
     // 1. Check Groq availability
@@ -128,7 +146,12 @@ async function loadTrending(topic = 'all') {
     if (!geminiOk) aiBanner.hidden = false;
 
     // 2. Fetch trending repos
-    const res  = await fetch(`/api/trending?topic=${encodeURIComponent(topic)}`);
+    const params = new URLSearchParams({
+      topic: topic,
+      mode: mode,
+      days: days.toString()
+    });
+    const res  = await fetch(`/api/trending?${params}`);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || `HTTP ${res.status}`);
@@ -149,7 +172,44 @@ async function loadTrending(topic = 'all') {
   }
 }
 
-// ── Update last updated display ───────────────────────────────────────────────
+// ── Force refresh repos ──────────────────────────────────────────────────────
+async function forceRefresh() {
+  // Reset UI
+  reposLoading.style.display = 'flex';
+  reposError.hidden  = true;
+  reposGrid.hidden   = true;
+  repoBadge.hidden   = true;
+  aiBanner.hidden    = true;
+  setChat(false);
+  currentRepos = [];
+
+  try {
+    // Fetch fresh data (bypass cache)
+    const params = new URLSearchParams({
+      topic: currentTopic,
+      mode: currentMode,
+      days: currentDays.toString()
+    });
+    const res = await fetch(`/api/refresh?${params}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    currentRepos = data.repos;
+    const lastUpdated = data.lastUpdated;
+
+    reposLoading.style.display = 'none';
+    displayRepos(currentRepos, lastUpdated);
+    setChat(true);
+
+  } catch (err) {
+    reposLoading.style.display = 'none';
+    reposErrMsg.textContent    = err.message;
+    reposError.hidden          = false;
+    console.error('[app] forceRefresh error:', err);
+  }
+}
 function updateLastUpdatedDisplay(timestamp) {
   const lastUpdatedEl = document.getElementById('last-updated');
   if (lastUpdatedEl && timestamp) {
@@ -256,37 +316,66 @@ async function sendMessage(question) {
   }
 }
 
-// ── Force refresh repos ──────────────────────────────────────────────────────
-async function forceRefresh() {
-  // Reset UI
-  reposLoading.style.display = 'flex';
-  reposError.hidden  = true;
-  reposGrid.hidden   = true;
-  repoBadge.hidden   = true;
-  aiBanner.hidden    = true;
-  setChat(false);
-  currentRepos = [];
+// ── Topic input and suggestions ──────────────────────────────────────────────
+function showTopicSuggestions(input) {
+  const query = input.toLowerCase().trim();
+  if (!query) {
+    topicSuggestions.hidden = true;
+    return;
+  }
 
-  try {
-    // Fetch fresh data (bypass cache)
-    const res = await fetch(`/api/refresh?topic=${encodeURIComponent(currentTopic)}`);
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `HTTP ${res.status}`);
-    }
-    const data = await res.json();
-    currentRepos = data.repos;
-    const lastUpdated = data.lastUpdated;
+  const matches = POPULAR_TOPICS.filter(topic =>
+    topic.toLowerCase().includes(query)
+  ).slice(0, 8);
 
-    reposLoading.style.display = 'none';
-    displayRepos(currentRepos, lastUpdated);
-    setChat(true);
+  if (matches.length === 0) {
+    topicSuggestions.hidden = true;
+    return;
+  }
 
-  } catch (err) {
-    reposLoading.style.display = 'none';
-    reposErrMsg.textContent    = err.message;
-    reposError.hidden          = false;
-    console.error('[app] forceRefresh error:', err);
+  topicSuggestions.innerHTML = '';
+  matches.forEach(topic => {
+    const item = document.createElement('div');
+    item.className = 'topic-suggestion-item';
+    item.textContent = topic;
+    item.addEventListener('click', () => {
+      topicInput.value = topic;
+      topicSuggestions.hidden = true;
+      loadTrending(topic, currentMode, currentDays);
+    });
+    topicSuggestions.appendChild(item);
+  });
+
+  topicSuggestions.hidden = false;
+}
+
+function hideTopicSuggestions() {
+  setTimeout(() => {
+    topicSuggestions.hidden = true;
+  }, 150);
+}
+
+// ── Mode switching ────────────────────────────────────────────────────────────
+function handleModeChange() {
+  const selectedMode = document.querySelector('input[name="search-mode"]:checked').value;
+  currentMode = selectedMode;
+
+  if (selectedMode === 'updated') {
+    datePickerWrapper.hidden = false;
+    currentDays = parseInt(dateSelect.value);
+  } else {
+    datePickerWrapper.hidden = true;
+    currentDays = 7; // default for stars mode
+  }
+
+  loadTrending(currentTopic, currentMode, currentDays);
+}
+
+// ── Date selection ────────────────────────────────────────────────────────────
+function handleDateChange() {
+  currentDays = parseInt(dateSelect.value);
+  if (currentMode === 'updated') {
+    loadTrending(currentTopic, currentMode, currentDays);
   }
 }
 
@@ -297,13 +386,31 @@ chatInput.addEventListener('keydown', (e) => {
 });
 refreshBtn.addEventListener('click', forceRefresh);
 
-// Topic selector
-if (topicSelect) {
-  topicSelect.addEventListener('change', (e) => {
-    const selectedTopic = e.target.value;
-    loadTrending(selectedTopic);
-  });
-}
+// Topic input
+topicInput.addEventListener('input', (e) => {
+  showTopicSuggestions(e.target.value);
+});
+
+topicInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const topic = topicInput.value.trim() || 'all';
+    topicSuggestions.hidden = true;
+    loadTrending(topic, currentMode, currentDays);
+  } else if (e.key === 'Escape') {
+    topicSuggestions.hidden = true;
+  }
+});
+
+topicInput.addEventListener('blur', hideTopicSuggestions);
+
+// Mode switching
+document.querySelectorAll('input[name="search-mode"]').forEach(radio => {
+  radio.addEventListener('change', handleModeChange);
+});
+
+// Date selection
+dateSelect.addEventListener('change', handleDateChange);
 
 // Chip suggestions
 suggestions.addEventListener('click', (e) => {
@@ -312,4 +419,4 @@ suggestions.addEventListener('click', (e) => {
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-loadTrending('all');
+loadTrending('all', 'stars', 7);

@@ -22,25 +22,39 @@ function getDateDaysAgo(daysAgo = 0) {
 }
 
 /**
- * Search GitHub repos created since `sinceDate`, sorted by stars.
+ * Search GitHub repos based on mode and filters.
  * @param {object} headers
- * @param {string} sinceDate - ISO date string YYYY-MM-DD
+ * @param {string} mode - 'stars' (most starred ever) or 'updated' (recently updated)
+ * @param {number} days - Number of days for date range (only used in 'updated' mode)
  * @param {number} perPage
  * @param {string} topic - Optional topic to filter by
  * @returns {Promise<Array>} raw items from GitHub
  */
-async function searchRepos(headers, sinceDate, perPage, topic = '') {
-  let query = `created:>${sinceDate}`;
-  if (topic && topic !== 'all') {
-    query += ` topic:${topic}`;
+async function searchRepos(headers, mode, days, perPage, topic = '') {
+  let query = '';
+  let sort = 'stars';
+  let order = 'desc';
+
+  if (mode === 'stars') {
+    // Most starred repos ever - no date filter
+    query = topic && topic !== 'all' ? `topic:${topic}` : '';
+    sort = 'stars';
+  } else if (mode === 'updated') {
+    // Recently updated repos within date range
+    const sinceDate = getDateDaysAgo(days);
+    query = `pushed:>${sinceDate}`;
+    if (topic && topic !== 'all') {
+      query += ` topic:${topic}`;
+    }
+    sort = 'updated';
   }
 
   const response = await axios.get(`${GITHUB_API_BASE}/search/repositories`, {
     headers,
     params: {
-      q: query,
-      sort: 'stars',
-      order: 'desc',
+      q: query || 'stars:>1', // fallback query if empty
+      sort: sort,
+      order: order,
       per_page: perPage,
     },
     timeout: 15000,
@@ -49,39 +63,27 @@ async function searchRepos(headers, sinceDate, perPage, topic = '') {
 }
 
 /**
- * Fetch trending repositories with smart date fallback.
- * Tries: today → last 7 days → last 30 days until results are found.
+ * Fetch repositories based on search mode and filters.
  * @param {number} perPage - Number of repos to return
- * @param {string} topic - Optional topic to filter by (default: 'all')
+ * @param {string} mode - 'stars' (most starred) or 'updated' (recently updated)
+ * @param {number} days - Days for date range (only for 'updated' mode)
+ * @param {string} topic - Optional topic to filter by
  * @returns {Promise<Array>} Array of normalised repo objects
  */
-async function fetchTrendingRepos(perPage = 10, topic = 'all') {
+async function fetchTrendingRepos(perPage = 10, mode = 'stars', days = 7, topic = 'all') {
   const token = process.env.GITHUB_TOKEN;
   const headers = { Accept: 'application/vnd.github.v3+json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  // Date windows to try: today, 7 days, 30 days
-  const windows = [
-    { label: 'today', daysAgo: 0 },
-    { label: 'last 7 days', daysAgo: 7 },
-    { label: 'last 30 days', daysAgo: 30 },
-  ];
+  console.log(`[github] Searching repos with mode: ${mode}, days: ${days}, topic: ${topic}…`);
 
-  let items = [];
-  for (const window of windows) {
-    const sinceDate = getDateDaysAgo(window.daysAgo);
-    console.log(`[github] Searching repos created since ${sinceDate} (${window.label})…`);
-    items = await searchRepos(headers, sinceDate, perPage, topic);
-    if (items.length > 0) {
-      console.log(`[github] Found ${items.length} repos using window: ${window.label}`);
-      break;
-    }
-    console.log(`[github] No results for ${window.label}, trying wider window…`);
-  }
+  const items = await searchRepos(headers, mode, days, perPage, topic);
 
   if (items.length === 0) {
-    throw new Error('GitHub Search returned no repositories for any time window.');
+    throw new Error(`GitHub Search returned no repositories for mode: ${mode}, topic: ${topic}`);
   }
+
+  console.log(`[github] Found ${items.length} repos`);
 
   // Normalise to our app's shape
   return items.map((repo) => ({
