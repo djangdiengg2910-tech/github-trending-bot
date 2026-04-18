@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GitHub Trending Bot — AI-Powered Repo Dashboard</title>
-  <meta name="description" content="Discover today's hottest GitHub repositories with AI-generated summaries and an intelligent chatbot powered by Groq." />
+  <meta name="description" content="Discover today's hottest GitHub repositories with AI-generated summaries and an intelligent chatbot powered by Gemini." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
@@ -74,9 +74,9 @@
     <div class="container">
       <span class="ai-banner-icon">⚠️</span>
       <div class="ai-banner-text">
-        <strong>AI features are limited</strong> — the Groq API key is missing or invalid.
-        <a href="https://console.groq.com/keys" target="_blank" rel="noopener">Get a free key</a>,
-        add it to <code>.env</code> as <code>GROQ_API_KEY=gsk_…</code>, then restart the server.
+        <strong>AI features are limited</strong> — the Gemini API key is missing or invalid.
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Get a free key</a>,
+        add it to <code>.env</code> as <code>GEMINI_API_KEY=AIza…</code>, then restart the server.
       </div>
     </div>
   </div>
@@ -91,7 +91,7 @@
         Today's <span class="gradient-text">Trending</span><br/>Repositories
       </h1>
       <p class="hero-sub">
-        Fetched from GitHub Search API · Summaries powered by Groq AI (llama-3.3-70b-versatile)
+        Fetched from GitHub Search API · Summaries powered by Gemini AI
       </p>
     </section>
 
@@ -169,7 +169,7 @@
   <!-- ── Footer ──────────────────────────────────────────────────────────── -->
   <footer class="footer">
     <div class="container">
-      Built with ❤️ using <strong>GitHub Search API</strong> + <strong>Groq AI</strong> (llama-3.3-70b-versatile) · Cached for 24 hours
+      Built with ❤️ using <strong>GitHub Search API</strong> + <strong>Gemini AI</strong> · Cached for 24 hours
     </div>
   </footer>
 

@@ -136,11 +136,11 @@ async function loadTrending(topic = 'all', mode = 'stars', days = 7) {
   currentDays  = days;
 
   try {
-    // 1. Check Groq availability
+    // 1. Check Gemini availability
     try {
       const sr = await fetch('/api/status');
       const sd = await sr.json();
-      geminiOk = sd.groqAvailable && sd.groqKeyValid;
+      geminiOk = sd.geminiAvailable && sd.geminiKeyValid;
     } catch (_) { geminiOk = false; }
 
     if (!geminiOk) aiBanner.hidden = false;
@@ -242,7 +242,7 @@ function setChat(enabled) {
   if (enabled) {
     chatInput.placeholder = geminiOk
       ? 'Ask about today\'s trending repos…'
-      : 'Chatbot unavailable — Groq API key required';
+      : 'Chatbot unavailable — Gemini API key required';
     chatInput.disabled = !geminiOk;
     chatSend.disabled  = !geminiOk;
     document.querySelectorAll('.chip').forEach(c => c.disabled = !geminiOk);
