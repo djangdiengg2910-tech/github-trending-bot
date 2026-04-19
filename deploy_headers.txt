@@ -1,0 +1,10 @@
+HTTP/1.1 200 OK
+vary: Origin
+access-control-allow-origin: https://railway.com
+access-control-allow-credentials: true
+content-type: text/plain; charset=utf-8
+Content-Length: 336
+date: Sun, 19 Apr 2026 04:49:26 GMT
+via: 1.1 google
+Alt-Svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+
